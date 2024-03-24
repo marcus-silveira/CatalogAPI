@@ -16,12 +16,12 @@ public class CategoriesController : ControllerBase
         _dbContext = dbContext;
     }
 
-    [HttpGet("{id}/products")]
-    public ActionResult<IEnumerable<Category>> GetCategoryProcut(int id)
+    [HttpGet("{id:int:min(1)}/products")]
+    public async Task<ActionResult<IEnumerable<Category>>> GetCategoryProcut(int id)
     {
         try
         {
-            var categories = _dbContext.Categories.Include(p => p.Products).Where(x => x.Id == id).ToList();
+            var categories = await _dbContext.Categories.Include(p => p.Products).Where(x => x.Id == id).ToListAsync();
             if (categories is null) return NotFound();
             return Ok(categories);
         }
@@ -32,11 +32,11 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<Category>> Get()
+    public async Task<ActionResult<IEnumerable<Category>>> Get()
     {
         try
         {
-            var categories = _dbContext.Categories.ToList();
+            var categories = await _dbContext.Categories.ToListAsync();
             if (categories is null) return NotFound();
             return Ok(categories);
         }
@@ -46,13 +46,13 @@ public class CategoriesController : ControllerBase
         }
     }
 
-    [HttpGet("{id}", Name = "GetCategory")]
+    [HttpGet("{id:int:min(1)}", Name = "GetCategory")]
     public ActionResult<Category> GetById(int id)
     {
         try
         {
             var category = _dbContext.Categories.FirstOrDefault(x => x.Id == id);
-            if (category is null) return NotFound("Produto não encontrado");
+            if (category is null) return NotFound("Categoria não encontrada");
             return Ok(category);
         }
         catch (Exception e)
@@ -78,7 +78,7 @@ public class CategoriesController : ControllerBase
         }
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:int:min(1)}")]
     public ActionResult<Category> Put(int id, Category category)
     {
         try
