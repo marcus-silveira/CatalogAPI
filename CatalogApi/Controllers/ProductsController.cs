@@ -10,12 +10,23 @@ namespace CatalogApi.Controllers;
 public class ProductsController : ControllerBase
 {
     private readonly CatalogApiDbContext _dbContext;
-
-    public ProductsController(CatalogApiDbContext dbContext)
+    private readonly IConfiguration _configuration;
+    public ProductsController(CatalogApiDbContext dbContext, IConfiguration configuration)
     {
         _dbContext = dbContext;
+        _configuration = configuration;
     }
 
+    [HttpGet("/config")]
+    public async Task<ActionResult<string[]>> GetConfiguration()
+    {
+        var config1 = _configuration["TestIConfiguration"];
+        var config2 = _configuration.GetSection("TestIConfiguration");
+
+        string[] array = {config1, config2.Value};
+
+        return Ok(array);
+    }
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Product>>> Get()
     {
