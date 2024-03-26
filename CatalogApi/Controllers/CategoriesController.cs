@@ -1,4 +1,5 @@
 ﻿using CatalogApi.Context;
+using CatalogApi.Filters;
 using CatalogApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,7 +31,7 @@ public class CategoriesController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "Ocorreu um erro ao precessar a requisição");
         }
     }
-
+    [ServiceFilter(typeof(ApiLoggingFilter))]
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Category>>> Get()
     {
