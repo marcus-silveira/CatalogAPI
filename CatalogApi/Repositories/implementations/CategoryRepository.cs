@@ -25,20 +25,34 @@ public class CategoryRepository : ICategoryRepository
         return await _dbContext.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
     }
 
+    public async Task<IEnumerable<Category>> GetCategoryAndProduct(int id)
+    {
+        return await _dbContext.Categories.Include(p => p.Products).Where(x => x.Id == id).ToListAsync();
+    }
+
     public async Task<Category> Create(Category category)
     {
-         await _dbContext.Categories.AddAsync(category);
-         await _dbContext.SaveChangesAsync();
-         return category;
+        await _dbContext.Categories.AddAsync(category);
+        await _dbContext.SaveChangesAsync();
+        return category;
     }
 
-    public Task<Category> Update(Category category)
+    public async Task<Category> Update(Category category)
     {
-        throw new NotImplementedException();
+        _dbContext.Entry(category).State = EntityState.Modified;
+        await _dbContext.SaveChangesAsync();
+        return category;
     }
 
-    public Task<Category> Delete(int id)
+    public async Task<bool> Delete(int id)
     {
-        throw new NotImplementedException();
+        var category = await _dbContext.Categories.FindAsync(id);
+        if (category is null)
+        {
+            return false;
+        }
+        _dbContext.Categories.Remove(category);
+        await _dbContext.SaveChangesAsync();
+        return true;
     }
 }

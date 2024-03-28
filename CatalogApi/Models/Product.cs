@@ -8,10 +8,11 @@ namespace CatalogApi.Models;
 public class Product : IValidatableObject
 {
     // MIGRAR PARA FLUENT VALIDATIONS
-    [Key] public int Id { get; set; }
+    [Key] [JsonIgnore] public int Id { get; set; }
 
     [Required(ErrorMessage = "O nome é obrigatório")]
-    [StringLength(80)] [FirstLetterCapitalized]
+    [StringLength(80)]
+    [FirstLetterCapitalized]
     public string? Name { get; set; }
 
     [Required] [StringLength(300)] public string? Description { get; set; }
@@ -42,14 +43,12 @@ public class Product : IValidatableObject
         //                 new[] { nameof(Name) });
         //     }
         // }
-        
+
         if (Inventory <= 0)
-        {
             yield return new
                 ValidationResult("O estoque deve ser maior que zero",
                     new[]
                         { nameof(Inventory) }
                 );
-        }
     }
 }

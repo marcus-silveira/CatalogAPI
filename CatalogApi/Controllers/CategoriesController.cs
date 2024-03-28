@@ -1,116 +1,73 @@
-﻿using CatalogApi.Context;
-using CatalogApi.Filters;
-using CatalogApi.Models;
+﻿using CatalogApi.Models;
+using CatalogApi.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CatalogApi.Controllers;
 
 [ApiController]
 [Route("api/categories")]
-public class CategoriesController : ControllerBase
+public class CategoriesController(ICategoryRepository repository, ILogger<CategoriesController> logger)
+    : ControllerBase
 {
-    private readonly CatalogApiDbContext _dbContext;
-
-    public CategoriesController(CatalogApiDbContext dbContext)
-    {
-        _dbContext = dbContext;
-    }
+    private readonly ILogger<CategoriesController> _logger = logger;
+    private readonly ICategoryRepository _repository = repository;
 
     [HttpGet("{id:int:min(1)}/products")]
-    public async Task<ActionResult<IEnumerable<Category>>> GetCategoryProcut(int id)
+    public async Task<ActionResult<IEnumerable<Category>>> GetCategoryProduct(int id)
     {
-        try
-        {
-            var categories = await _dbContext.Categories.Include(p => p.Products).Where(x => x.Id == id).ToListAsync();
-            if (categories is null) return NotFound();
-            return Ok(categories);
-        }
-        catch (Exception e)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, "Ocorreu um erro ao precessar a requisição");
-        }
+        var categories = await _repository.GetCategoryAndProduct(id);
+        if (!categories.Any()) return NotFound(categories);
+        return Ok(categories);
     }
-    [ServiceFilter(typeof(ApiLoggingFilter))]
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Category>>> Get()
     {
-        try
-        {
-            var categories = await _dbContext.Categories.ToListAsync();
-            if (categories is null) return NotFound();
-            return Ok(categories);
-        }
-        catch (Exception e)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, "Ocorreu um erro ao precessar a requisição");
-        }
+        var categories = await _repository.GetCategories();
+        if (categories.Any()) return NotFound(categories);
+        return Ok(categories);
     }
 
     [HttpGet("{id:int:min(1)}", Name = "GetCategory")]
-    public ActionResult<Category> GetById(int id)
+    public async Task<ActionResult<Category>> GetById(int id)
     {
-        try
+        var category = await _repository.GetCategory(id);
+        if (category is null)
         {
-            var category = _dbContext.Categories.FirstOrDefault(x => x.Id == id);
-            if (category is null) return NotFound("Categoria não encontrada");
-            return Ok(category);
+            _logger.LogWarning($"Categoria de ID = {id} não encontrada.");
+            return NotFound("Categoria não encontrada");
         }
-        catch (Exception e)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, "Ocorreu um erro ao precessar a requisição");
-        }
+
+        return Ok(category);
     }
 
     [HttpPost]
-    public ActionResult Post(Category category)
+    public async Task<IActionResult> Post(Category category)
     {
-        try
+        if (category is null)
         {
-            if (category is null) return BadRequest();
-            _dbContext.Categories.Add(category);
-            _dbContext.SaveChanges();
+            _logger.LogWarning("Dados inválidos");
+            return BadRequest("Dados Inválidos");
+        }
 
-            return new CreatedAtRouteResult("GetCategory", new { id = category.Id }, category);
-        }
-        catch (Exception e)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, "Ocorreu um erro ao precessar a requisição");
-        }
+        var categoryCreated = await _repository.Create(category);
+        return new CreatedAtRouteResult("GetCategory", new { id = categoryCreated.Id }, categoryCreated);
     }
 
     [HttpPut("{id:int:min(1)}")]
-    public ActionResult<Category> Put(int id, Category category)
+    public async Task<ActionResult<Category>?> Put(int id, Category category)
     {
-        try
-        {
-            if (id != category.Id) return BadRequest();
-            _dbContext.Entry(category).State = EntityState.Modified;
-            _dbContext.SaveChanges();
-
-            return Ok(category);
-        }
-        catch (Exception e)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, "Ocorreu um erro ao precessar a requisição");
-        }
+        if (await _repository.GetCategory(id) is null) return NotFound("Categoria não encontrada");
+        if (id != category.Id) return BadRequest("Dados inválidos");
+        await _repository.Update(category);
+        return Ok(category);
     }
 
-    [HttpDelete]
-    public ActionResult<Category> Delete(int id)
+    [HttpDelete("{id:int}")]
+    public async Task<ActionResult<Category>> Delete(int id)
     {
-        try
-        {
-            var category = _dbContext.Categories.FirstOrDefault(x => x.Id == id);
-            if (category is null) return NotFound();
-            _dbContext.Categories.Remove(category);
-            _dbContext.SaveChanges();
-
-            return Ok(category);
-        }
-        catch (Exception e)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, "Ocorreu um erro ao precessar a requisição");
-        }
+        var category = await _repository.Delete(id);
+        if (!category) return NotFound("Categoria não encontrada");
+        return Ok(category);
     }
 }

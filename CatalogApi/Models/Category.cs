@@ -7,16 +7,11 @@ namespace CatalogApi.Models;
 [Table("Categories")]
 public class Category
 {
-    [Key]
-    public int Id { get; private set; }
-    
-    [Required]
-    [StringLength(80)]
-    public string? Name { get; private set; }
-    
-    [Required]
-    [StringLength(300)]
-    public string? UrlImage { get; private set; }
+    [Key] public int Id { get; set; }
 
-    public ICollection<Product>? Products { get; private set; } = new Collection<Product>();
+    [Required] [StringLength(80)] public string? Name { get; set; }
+
+    [Required] [StringLength(300)] public string? UrlImage { get; set; }
+
+    public ICollection<Product>? Products { get; set; } = new Collection<Product>();
 }
