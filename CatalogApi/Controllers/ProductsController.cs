@@ -1,5 +1,5 @@
-﻿using CatalogApi.Context;
-using CatalogApi.Models;
+﻿using CatalogApi.Models;
+using CatalogApi.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,105 +9,69 @@ namespace CatalogApi.Controllers;
 [ApiController]
 public class ProductsController : ControllerBase
 {
-    private readonly CatalogApiDbContext _dbContext;
     private readonly IConfiguration _configuration;
-    public ProductsController(CatalogApiDbContext dbContext, IConfiguration configuration)
+    private readonly IProductRepository _repository;
+
+    public ProductsController(IProductRepository repository, IConfiguration configuration)
     {
-        _dbContext = dbContext;
+        _repository = repository;
         _configuration = configuration;
     }
 
+    [ApiExplorerSettings(IgnoreApi = true)]
     [HttpGet("/config")]
     public async Task<ActionResult<string[]>> GetConfiguration()
     {
         var config1 = _configuration["TestIConfiguration"];
         var config2 = _configuration.GetSection("TestIConfiguration");
 
-        string[] array = {config1, config2.Value};
+        string[] array = { config1, config2.Value };
 
         return Ok(array);
     }
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Product>>> Get()
     {
-        try
-        {
-            var products = await _dbContext.Products.Take(10).ToListAsync();
-            if (products is null) return NotFound();
+        var products = await _repository.GetProductsAsync().Result.Take(10).ToListAsync();
+        if (!products.Any()) return NotFound(products);
 
-            return Ok(products);
-        }
-        catch (Exception e)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, "Ocorreu um erro ao precessar a requisição");
-        }
+        return Ok(products);
     }
 
     [HttpGet("{id}", Name = "GetProduct")]
     public async Task<ActionResult<Product>> GetById(int id)
     {
-        try
-        {
-            var product = await _dbContext.Products.FirstOrDefaultAsync(x => x.Id == id);
-            if (product is null) return NotFound("Produto não encontrado");
+        var product = await _repository.GetProductAsync(id);
+        if (product is null) return NotFound("Produto não encontrado");
 
-            return Ok(product);
-        }
-        catch (Exception e)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, "Ocorreu um erro ao precessar a requisição");
-        }
+        return Ok(product);
     }
 
     [HttpPost]
-    public ActionResult Post(Product product)
+    public async Task<ActionResult<Product>> Post(Product product)
     {
-        try
-        {
-            if (product is null) return BadRequest();
-            _dbContext.Products.Add(product);
-            _dbContext.SaveChanges();
+        if (product is null) return StatusCode(500, "Falha ao atualizar o produto");
+        var newProduct = await _repository.CreateAsync(product);
 
-            return new CreatedAtRouteResult("GetProduct", new { id = product.Id }, product);
-        }
-        catch (Exception e)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, "Ocorreu um erro ao precessar a requisição");
-        }
+        return new CreatedAtRouteResult("GetProduct", new { id = newProduct.Id }, newProduct);
     }
 
     [HttpPut("{id}")]
-    public ActionResult<Product> Put(int id, Product product)
+    public async Task<ActionResult> Put(Product product)
     {
-        try
-        {
-            if (id != product.Id) return BadRequest();
-            _dbContext.Entry(product).State = EntityState.Modified;
-            _dbContext.SaveChanges();
+        var updatedProduct = await _repository.UpdateAsync(product);
+        if (!updatedProduct) return BadRequest();
 
-            return Ok(product);
-        }
-        catch (Exception e)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, "Ocorreu um erro ao precessar a requisição");
-        }
+        return Ok();
     }
 
     [HttpDelete]
-    public ActionResult<Product> Delete(int id)
+    public async Task<ActionResult> Delete(int id)
     {
-        try
-        {
-            var product = _dbContext.Products.FirstOrDefault(x => x.Id == id);
-            if (product is null) return NotFound();
-            _dbContext.Products.Remove(product);
-            _dbContext.SaveChanges();
+        var productDeleted = await _repository.DeleteAsync(id);
+        if (!productDeleted) return BadRequest("Ocorreu um erro ao deletar o produto");
 
-            return Ok(product);
-        }
-        catch (Exception e)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, "Ocorreu um erro ao precessar a requisição");
-        }
+        return Ok();
     }
 }
