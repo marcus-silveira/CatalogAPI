@@ -8,7 +8,7 @@ namespace CatalogApi.Models;
 public class Product : IValidatableObject
 {
     // MIGRAR PARA FLUENT VALIDATIONS
-    [Key] [JsonIgnore] public int Id { get; set; }
+    [Key] public int Id { get; set; }
 
     [Required(ErrorMessage = "O nome é obrigatório")]
     [StringLength(80)]
