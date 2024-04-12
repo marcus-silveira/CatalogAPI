@@ -13,28 +13,34 @@ public class Repository<T> : IRepository<T> where T : class
         DbContext = dbContext;
     }
 
-    public async Task<IEnumerable<T>> GetAll()
+    public Task<IQueryable<T>> GetAll()
     {
-        return await DbContext.Set<T>().Take(10).ToListAsync();
+        return Task.FromResult(DbContext.Set<T>().AsNoTracking());
     }
 
-    public Task<T?> Get(Expression<Func<T, bool>> predicate)
+    public async Task<T?> Get(Expression<Func<T, bool>> predicate)
     {
-        throw new NotImplementedException();
+        return await DbContext.Set<T>().FirstOrDefaultAsync(predicate);
     }
 
-    public Task<T> Add(T entity)
+    public async Task<T> Create(T entity)
     {
-        throw new NotImplementedException();
+        await DbContext.Set<T>().AddAsync(entity);
+        // await DbContext.SaveChangesAsync();
+        return entity;
     }
 
-    public Task<T> Update(T entity)
+    public async Task<T> Update(T entity)
     {
-        throw new NotImplementedException();
+        DbContext.Set<T>().Update(entity);
+        // await DbContext.SaveChangesAsync();
+        return entity;
     }
 
-    public Task<T> Delete(T entity)
+    public async Task<T> Delete(T entity)
     {
-        throw new NotImplementedException();
+        DbContext.Set<T>().Remove(entity);
+        // await DbContext.SaveChangesAsync();
+        return entity;
     }
 }

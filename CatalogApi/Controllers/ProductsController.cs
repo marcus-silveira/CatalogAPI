@@ -1,7 +1,6 @@
 ﻿using CatalogApi.Models;
 using CatalogApi.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CatalogApi.Controllers;
 
@@ -10,11 +9,11 @@ namespace CatalogApi.Controllers;
 public class ProductsController : ControllerBase
 {
     private readonly IConfiguration _configuration;
-    private readonly IProductRepository _repository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public ProductsController(IProductRepository repository, IConfiguration configuration)
+    public ProductsController(IUnitOfWork unitOfWork, IConfiguration configuration)
     {
-        _repository = repository;
+        _unitOfWork = unitOfWork;
         _configuration = configuration;
     }
 
@@ -29,11 +28,18 @@ public class ProductsController : ControllerBase
 
         return Ok(array);
     }
+    [HttpGet("{id}/category")]
+    public async Task<ActionResult<IEnumerable<Category>>> GetCategoryProduct(int id)
+    {
+        var categories = await _unitOfWork.ProductRepository.GetProductsByCategoryAsync(id);
+        if (!categories.Any()) return NotFound(categories);
+        return Ok(categories);
+    }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Product>>> Get()
     {
-        var products = await _repository.GetProductsAsync().Result.Take(10).ToListAsync();
+        var products = (await _unitOfWork.ProductRepository.GetAll()).Take(10).ToList();
         if (!products.Any()) return NotFound(products);
 
         return Ok(products);
@@ -42,7 +48,7 @@ public class ProductsController : ControllerBase
     [HttpGet("{id}", Name = "GetProduct")]
     public async Task<ActionResult<Product>> GetById(int id)
     {
-        var product = await _repository.GetProductAsync(id);
+        var product = await _unitOfWork.ProductRepository.Get(x => x.Id == id);
         if (product is null) return NotFound("Produto não encontrado");
 
         return Ok(product);
@@ -52,7 +58,7 @@ public class ProductsController : ControllerBase
     public async Task<ActionResult<Product>> Post(Product product)
     {
         if (product is null) return StatusCode(500, "Falha ao atualizar o produto");
-        var newProduct = await _repository.CreateAsync(product);
+        var newProduct = await _unitOfWork.ProductRepository.Create(product);
 
         return new CreatedAtRouteResult("GetProduct", new { id = newProduct.Id }, newProduct);
     }
@@ -60,18 +66,19 @@ public class ProductsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult> Put(Product product)
     {
-        var updatedProduct = await _repository.UpdateAsync(product);
-        if (!updatedProduct) return BadRequest();
+        if (await _unitOfWork.ProductRepository.Get(x => x.Id == product.Id) is null) return NotFound("Produto não encontrada"); 
+        await _unitOfWork.ProductRepository.Update(product);
 
-        return Ok();
+        return Ok(product);
     }
 
     [HttpDelete]
     public async Task<ActionResult> Delete(int id)
     {
-        var productDeleted = await _repository.DeleteAsync(id);
-        if (!productDeleted) return BadRequest("Ocorreu um erro ao deletar o produto");
+        var product = await _unitOfWork.ProductRepository.Get(x => x.Id == id);
+        if (product is null) return NotFound("Produto não encontrada");
 
-        return Ok();
+        var productDeleted = await _unitOfWork.ProductRepository.Delete(product);
+        return Ok(productDeleted);
     }
 }
